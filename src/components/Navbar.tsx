@@ -50,7 +50,8 @@ const Navbar = () => {
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm">
                   <Menu className="h-6 w-6" />
-                </SheetTrigger>
+                </Button>
+              </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <div className="flex flex-col space-y-4 mt-6">
                   <NavItems />
