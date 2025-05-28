@@ -277,7 +277,7 @@ const Auth = () => {
                     <Checkbox
                       id="testMode"
                       checked={testMode}
-                      onCheckedChange={setTestMode}
+                      onCheckedChange={(checked) => setTestMode(checked === true)}
                     />
                     <Label htmlFor="testMode" className="text-sm">
                       🧪 Test Mode (Skip payment & get test balance)
