@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, User, Mail, Phone, Gift } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Phone, Zap } from 'lucide-react';
 
-// 🎯 PerkPal Authentication Page - Author: Alexander Levi
-// 🔐 Complete signup/login system with referral tracking
+// 🎯 CodeWave Authentication Page - Author: Alexander Levi
+// 🔐 Complete signup/login system with payment requirement
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -51,30 +51,20 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            referral_code: formData.referralCode
-          }
-        }
-      });
-
-      if (error) throw error;
-
+      // Redirect to payment first - user must pay ₦5,000 before account creation
+      const paymentUrl = `https://paystack.co/pay/codewave-registration`;
+      
+      // Store form data temporarily in localStorage
+      localStorage.setItem('codewave_signup_data', JSON.stringify(formData));
+      
       toast({
-        title: "🎉 Welcome to PerkPal!",
-        description: "Account created successfully! ₦2,000 bonus added to your wallet.",
+        title: "💳 Payment Required",
+        description: "You'll be redirected to pay ₦5,000 registration fee. After payment, your account will be created with ₦2,000 credited to your wallet.",
       });
 
-      // 🚀 Auto-login after successful signup
-      if (data.user) {
-        navigate('/dashboard');
-      }
+      // Redirect to payment
+      window.open(paymentUrl, '_blank');
+      
     } catch (error: any) {
       toast({
         title: "❌ Registration Failed",
@@ -100,7 +90,7 @@ const Auth = () => {
 
       toast({
         title: "🎉 Welcome back!",
-        description: "Successfully logged in to PerkPal.",
+        description: "Successfully logged in to CodeWave.",
       });
 
       if (data.user) {
@@ -118,20 +108,20 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mb-4">
-              <Gift className="w-8 h-8 text-white" />
+            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-4">
+              <Zap className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gradient">
-              {isLogin ? '🔐 Welcome Back!' : '🎉 Join PerkPal'}
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              {isLogin ? '🔐 Welcome Back!' : '🚀 Join CodeWave'}
             </CardTitle>
             <CardDescription className="text-gray-600">
               {isLogin 
                 ? 'Sign in to continue earning rewards' 
-                : 'Start earning ₦2,000 welcome bonus today!'
+                : 'Pay ₦5,000 registration fee and get ₦2,000 credited to your wallet!'
               }
             </CardDescription>
           </CardHeader>
@@ -191,6 +181,15 @@ const Auth = () => {
                       className="border-gray-300"
                     />
                   </div>
+
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="font-semibold text-blue-800 mb-2">💳 Registration Fee</h3>
+                    <p className="text-sm text-blue-700">
+                      • Pay ₦5,000 one-time registration fee<br/>
+                      • Get ₦2,000 instantly credited to your wallet<br/>
+                      • Start earning immediately after payment
+                    </p>
+                  </div>
                 </>
               )}
 
@@ -233,16 +232,16 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full gradient-primary text-white font-semibold py-3 hover:opacity-90 transition-opacity"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 hover:opacity-90 transition-opacity"
                 disabled={loading}
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {isLogin ? 'Signing In...' : 'Creating Account...'}
+                    {isLogin ? 'Signing In...' : 'Redirecting to Payment...'}
                   </div>
                 ) : (
-                  isLogin ? '🚀 Sign In' : '🎉 Create Account'
+                  isLogin ? '🚀 Sign In' : '💳 Pay ₦5,000 & Create Account'
                 )}
               </Button>
             </form>
@@ -253,9 +252,9 @@ const Auth = () => {
               </p>
               <button
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-emerald-600 hover:text-emerald-700 font-semibold mt-1"
+                className="text-blue-600 hover:text-blue-700 font-semibold mt-1"
               >
-                {isLogin ? '🎁 Sign Up for ₦2,000 Bonus' : '🔐 Sign In Instead'}
+                {isLogin ? '💳 Pay ₦5,000 & Join CodeWave' : '🔐 Sign In Instead'}
               </button>
             </div>
           </CardContent>

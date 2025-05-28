@@ -9,6 +9,21 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      "auth.uses": {
+        Row: {
+          created_at: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           bonus_amount: number
@@ -122,6 +137,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_tasks: {
         Row: {
           completed_at: string
@@ -169,10 +205,13 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          payment_required: boolean | null
           phone: string | null
           referral_code: string
           referred_by: string | null
           registration_bonus_claimed: boolean
+          registration_payment_amount: number | null
+          registration_payment_status: string | null
           total_earned: number
           updated_at: string
           wallet_balance: number
@@ -184,10 +223,13 @@ export type Database = {
           first_name: string
           id?: string
           last_name: string
+          payment_required?: boolean | null
           phone?: string | null
           referral_code: string
           referred_by?: string | null
           registration_bonus_claimed?: boolean
+          registration_payment_amount?: number | null
+          registration_payment_status?: string | null
           total_earned?: number
           updated_at?: string
           wallet_balance?: number
@@ -199,10 +241,13 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          payment_required?: boolean | null
           phone?: string | null
           referral_code?: string
           referred_by?: string | null
           registration_bonus_claimed?: boolean
+          registration_payment_amount?: number | null
+          registration_payment_status?: string | null
           total_earned?: number
           updated_at?: string
           wallet_balance?: number
@@ -217,6 +262,45 @@ export type Database = {
           },
         ]
       }
+      withdrawal_requests: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          admin_notes: string | null
+          amount: number
+          bank_name: string | null
+          id: string
+          processed_at: string | null
+          requested_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          admin_notes?: string | null
+          amount: number
+          bank_name?: string | null
+          id?: string
+          processed_at?: string | null
+          requested_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          admin_notes?: string | null
+          amount?: number
+          bank_name?: string | null
+          id?: string
+          processed_at?: string | null
+          requested_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -226,9 +310,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -343,6 +431,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

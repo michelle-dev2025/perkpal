@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Menu, X, Gift } from 'lucide-react';
+import { Menu, X, Zap } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "./ui/sheet";
 
-// 🧭 PerkPal Navigation - Author: Alexander Levi
+// 🧭 CodeWave Navigation - Author: Alexander Levi
 // 🎯 Responsive navbar with mobile menu
 
 const Navbar = () => {
@@ -16,11 +16,11 @@ const Navbar = () => {
 
   const NavItems = () => (
     <>
-      <a href="/auth" className="text-gray-700 hover:text-emerald-600 transition-colors">
+      <a href="/auth" className="text-gray-700 hover:text-blue-600 transition-colors">
         🔐 Login
       </a>
-      <Button asChild className="gradient-primary text-white hover:opacity-90">
-        <a href="/auth">🎉 Get ₦2,000 Bonus</a>
+      <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90">
+        <a href="/auth">🚀 Join CodeWave - Pay ₦5,000</a>
       </Button>
     </>
   );
@@ -32,10 +32,10 @@ const Navbar = () => {
           {/* 🎯 Logo */}
           <div className="flex items-center">
             <a href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                <Gift className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gradient">PerkPal</span>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CodeWave</span>
             </a>
           </div>
 
@@ -50,8 +50,7 @@ const Navbar = () => {
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm">
                   <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
+                </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <div className="flex flex-col space-y-4 mt-6">
                   <NavItems />
