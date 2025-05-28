@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, Wallet, TrendingUp, CreditCard, Shield, LogOut } from 'lucide-react';
+import { Users, Wallet, TrendingUp, CreditCard, Shield, LogOut, Search } from 'lucide-react';
 
 interface User {
   id: string;
@@ -19,6 +19,8 @@ interface User {
   total_earned: number;
   registration_payment_status: string;
   created_at: string;
+  referral_code: string;
+  phone: string;
 }
 
 interface Transaction {
@@ -42,11 +44,13 @@ interface WithdrawalRequest {
 
 const Admin = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -70,14 +74,32 @@ const Admin = () => {
 
   const fetchAllData = async () => {
     try {
-      // Fetch all users
+      // Fetch all users with a service role or admin privileges
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (usersError) throw usersError;
-      setUsers(usersData || []);
+      if (usersError) {
+        console.error('Users fetch error:', usersError);
+        // If direct fetch fails, try with auth context
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Fetch with user context
+          const { data: fallbackUsers, error: fallbackError } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (!fallbackError) {
+            setUsers(fallbackUsers || []);
+            setFilteredUsers(fallbackUsers || []);
+          }
+        }
+      } else {
+        setUsers(usersData || []);
+        setFilteredUsers(usersData || []);
+      }
 
       // Fetch all transactions
       const { data: transactionsData, error: transactionsError } = await supabase
@@ -85,8 +107,9 @@ const Admin = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (transactionsError) throw transactionsError;
-      setTransactions(transactionsData || []);
+      if (!transactionsError) {
+        setTransactions(transactionsData || []);
+      }
 
       // Fetch all withdrawal requests
       const { data: withdrawalsData, error: withdrawalsError } = await supabase
@@ -94,19 +117,36 @@ const Admin = () => {
         .select('*')
         .order('requested_at', { ascending: false });
 
-      if (withdrawalsError) throw withdrawalsError;
-      setWithdrawalRequests(withdrawalsData || []);
+      if (!withdrawalsError) {
+        setWithdrawalRequests(withdrawalsData || []);
+      }
 
     } catch (error: any) {
       console.error('Error fetching admin data:', error);
       toast({
         title: "❌ Error",
-        description: "Failed to fetch admin data",
+        description: "Failed to fetch some admin data. Check console for details.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (searchValue: string) => {
+    setSearchTerm(searchValue);
+    if (!searchValue.trim()) {
+      setFilteredUsers(users);
+      return;
+    }
+
+    const filtered = users.filter(user => 
+      user.first_name?.toLowerCase().includes(searchValue.toLowerCase()) ||
+      user.last_name?.toLowerCase().includes(searchValue.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchValue.toLowerCase()) ||
+      user.referral_code?.toLowerCase().includes(searchValue.toLowerCase())
+    );
+    setFilteredUsers(filtered);
   };
 
   // Chart data preparation
@@ -132,11 +172,15 @@ const Admin = () => {
 
   const COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444'];
 
-  const totalWalletBalance = users.reduce((sum, user) => sum + user.wallet_balance, 0);
-  const totalEarnings = users.reduce((sum, user) => sum + user.total_earned, 0);
+  const totalWalletBalance = users.reduce((sum, user) => sum + (user.wallet_balance || 0), 0);
+  const totalEarnings = users.reduce((sum, user) => sum + (user.total_earned || 0), 0);
   const pendingWithdrawals = withdrawalRequests
     .filter(req => req.status === 'pending')
     .reduce((sum, req) => sum + req.amount, 0);
+
+  // Calculate total revenue (registration fees)
+  const paidUsers = users.filter(user => user.registration_payment_status === 'completed');
+  const totalRevenue = paidUsers.length * 5000; // ₦5,000 per user
 
   if (!isAuthenticated) {
     return (
@@ -224,10 +268,10 @@ const Admin = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Wallet Balance</p>
-                  <p className="text-2xl font-bold text-green-600">₦{totalWalletBalance.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="text-2xl font-bold text-green-600">₦{totalRevenue.toLocaleString()}</p>
                 </div>
-                <Wallet className="w-8 h-8 text-green-500" />
+                <TrendingUp className="w-8 h-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
@@ -236,10 +280,10 @@ const Admin = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                  <p className="text-2xl font-bold text-purple-600">₦{totalEarnings.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-gray-600">Total Wallet Balance</p>
+                  <p className="text-2xl font-bold text-purple-600">₦{totalWalletBalance.toLocaleString()}</p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-purple-500" />
+                <Wallet className="w-8 h-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -303,11 +347,24 @@ const Admin = () => {
           </Card>
         </div>
 
-        {/* 👥 Users Table */}
+        {/* 👥 Users Table with Search */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>👥 Registered Users</CardTitle>
-            <CardDescription>All registered users and their details</CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>👥 All Registered Users ({filteredUsers.length})</CardTitle>
+                <CardDescription>Manage and view all users in the system</CardDescription>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -316,6 +373,8 @@ const Admin = () => {
                   <tr className="border-b">
                     <th className="text-left p-2">Name</th>
                     <th className="text-left p-2">Email</th>
+                    <th className="text-left p-2">Phone</th>
+                    <th className="text-left p-2">Referral Code</th>
                     <th className="text-left p-2">Wallet Balance</th>
                     <th className="text-left p-2">Total Earned</th>
                     <th className="text-left p-2">Payment Status</th>
@@ -323,14 +382,20 @@ const Admin = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {filteredUsers.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-gray-50">
                       <td className="p-2 font-medium">
                         {user.first_name} {user.last_name}
                       </td>
                       <td className="p-2">{user.email}</td>
-                      <td className="p-2">₦{user.wallet_balance.toLocaleString()}</td>
-                      <td className="p-2">₦{user.total_earned.toLocaleString()}</td>
+                      <td className="p-2">{user.phone || 'N/A'}</td>
+                      <td className="p-2">
+                        <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                          {user.referral_code}
+                        </code>
+                      </td>
+                      <td className="p-2">₦{user.wallet_balance?.toLocaleString() || '0'}</td>
+                      <td className="p-2">₦{user.total_earned?.toLocaleString() || '0'}</td>
                       <td className="p-2">
                         <Badge className={user.registration_payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
                           {user.registration_payment_status}

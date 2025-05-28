@@ -1,28 +1,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, User, Mail, Phone, Zap } from 'lucide-react';
 
 // 🎯 CodeWave Authentication Page - Author: Alexander Levi
-// 🔐 Complete signup/login system with payment requirement
+// 🔐 Complete signup/login system with payment requirement and test mode
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [testMode, setTestMode] = useState(false);
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     firstName: '',
     lastName: '',
     phone: '',
-    referralCode: ''
+    referralCode: searchParams.get('ref') || ''
   });
   
   const navigate = useNavigate();
@@ -46,25 +49,113 @@ const Auth = () => {
     });
   };
 
+  const generateReferralCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  };
+
+  const simulateTestModePayment = async (userId: string) => {
+    try {
+      // Update user to simulate payment completion
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          registration_payment_status: 'completed',
+          wallet_balance: 2000, // Credit ₦2,000 as bonus
+          total_earned: 2000,
+          registration_bonus_claimed: true
+        })
+        .eq('auth_id', userId);
+
+      if (updateError) throw updateError;
+
+      // Create transaction record for the simulated payment
+      await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          transaction_type: 'registration_bonus',
+          amount: 2000,
+          description: 'Test mode registration bonus'
+        });
+
+      toast({
+        title: "🧪 Test Mode Activated",
+        description: "Account created with ₦2,000 test balance. Payment simulated successfully!",
+      });
+    } catch (error: any) {
+      console.error('Error in test mode simulation:', error);
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Redirect to payment first - user must pay ₦5,000 before account creation
-      const paymentUrl = `https://paystack.co/pay/codewave-registration`;
-      
-      // Store form data temporarily in localStorage
-      localStorage.setItem('codewave_signup_data', JSON.stringify(formData));
-      
-      toast({
-        title: "💳 Payment Required",
-        description: "You'll be redirected to pay ₦5,000 registration fee. After payment, your account will be created with ₦2,000 credited to your wallet.",
+      // Create auth user first
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName
+          }
+        }
       });
 
-      // Redirect to payment
-      window.open(paymentUrl, '_blank');
-      
+      if (error) throw error;
+
+      if (data.user) {
+        // Find referrer if referral code exists
+        let referrerId = null;
+        if (formData.referralCode) {
+          const { data: referrerData } = await supabase
+            .from('users')
+            .select('id')
+            .eq('referral_code', formData.referralCode)
+            .single();
+          
+          if (referrerData) {
+            referrerId = referrerData.id;
+          }
+        }
+
+        // Create user profile
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert({
+            auth_id: data.user.id,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            referral_code: generateReferralCode(),
+            referred_by: referrerId,
+            registration_payment_status: testMode ? 'completed' : 'pending',
+            wallet_balance: testMode ? 2000 : 0,
+            total_earned: testMode ? 2000 : 0,
+            registration_bonus_claimed: testMode
+          });
+
+        if (profileError) throw profileError;
+
+        if (testMode) {
+          await simulateTestModePayment(data.user.id);
+          navigate('/dashboard');
+        } else {
+          // Store form data and redirect to payment
+          localStorage.setItem('codewave_signup_data', JSON.stringify(formData));
+          
+          toast({
+            title: "💳 Payment Required",
+            description: "You'll be redirected to pay ₦5,000 registration fee. After payment, your account will be created with ₦2,000 credited to your wallet.",
+          });
+
+          const paymentUrl = `https://paystack.co/pay/codewave-registration`;
+          window.open(paymentUrl, '_blank');
+        }
+      }
     } catch (error: any) {
       toast({
         title: "❌ Registration Failed",
@@ -182,14 +273,38 @@ const Auth = () => {
                     />
                   </div>
 
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 className="font-semibold text-blue-800 mb-2">💳 Registration Fee</h3>
-                    <p className="text-sm text-blue-700">
-                      • Pay ₦5,000 one-time registration fee<br/>
-                      • Get ₦2,000 instantly credited to your wallet<br/>
-                      • Start earning immediately after payment
-                    </p>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="testMode"
+                      checked={testMode}
+                      onCheckedChange={setTestMode}
+                    />
+                    <Label htmlFor="testMode" className="text-sm">
+                      🧪 Test Mode (Skip payment & get test balance)
+                    </Label>
                   </div>
+
+                  {!testMode && (
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h3 className="font-semibold text-blue-800 mb-2">💳 Registration Fee</h3>
+                      <p className="text-sm text-blue-700">
+                        • Pay ₦5,000 one-time registration fee<br/>
+                        • Get ₦2,000 instantly credited to your wallet<br/>
+                        • Start earning immediately after payment
+                      </p>
+                    </div>
+                  )}
+
+                  {testMode && (
+                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <h3 className="font-semibold text-yellow-800 mb-2">🧪 Test Mode</h3>
+                      <p className="text-sm text-yellow-700">
+                        • No payment required<br/>
+                        • Get ₦2,000 test balance immediately<br/>
+                        • Full functionality simulation
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -238,10 +353,10 @@ const Auth = () => {
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {isLogin ? 'Signing In...' : 'Redirecting to Payment...'}
+                    {isLogin ? 'Signing In...' : (testMode ? 'Creating Test Account...' : 'Redirecting to Payment...')}
                   </div>
                 ) : (
-                  isLogin ? '🚀 Sign In' : '💳 Pay ₦5,000 & Create Account'
+                  isLogin ? '🚀 Sign In' : (testMode ? '🧪 Create Test Account' : '💳 Pay ₦5,000 & Create Account')
                 )}
               </Button>
             </form>
@@ -254,7 +369,7 @@ const Auth = () => {
                 onClick={() => setIsLogin(!isLogin)}
                 className="text-blue-600 hover:text-blue-700 font-semibold mt-1"
               >
-                {isLogin ? '💳 Pay ₦5,000 & Join CodeWave' : '🔐 Sign In Instead'}
+                {isLogin ? '💳 Join CodeWave' : '🔐 Sign In Instead'}
               </button>
             </div>
           </CardContent>

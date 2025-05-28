@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Wallet, Gift, Users, TrendingUp, LogOut, ExternalLink, Copy } from 'lucide-react';
 
-// 🎯 PerkPal Dashboard - Author: Alexander Levi
+// 🎯 CodeWave Dashboard - Author: Alexander Levi
 // 💰 Main user dashboard with wallet, tasks, and referrals
 
 interface User {
@@ -18,6 +18,7 @@ interface User {
   wallet_balance: number;
   total_earned: number;
   referral_code: string;
+  registration_payment_status: string;
 }
 
 interface Task {
@@ -165,9 +166,19 @@ const Dashboard = () => {
     }
   };
 
+  const copyReferralLink = () => {
+    if (user?.referral_code) {
+      const referralLink = `${window.location.origin}/auth?ref=${user.referral_code}`;
+      navigator.clipboard.writeText(referralLink);
+      toast({
+        title: "📋 Referral Link Copied!",
+        description: "Share this link to earn ₦1,000 per referral!",
+      });
+    }
+  };
+
   const handleWithdraw = () => {
-    // 💳 Open Paystack payment link
-    window.open('https://paystack.shop/pay/cjq84w--6d', '_blank');
+    navigate('/withdrawal');
   };
 
   const handleLogout = async () => {
@@ -183,13 +194,39 @@ const Dashboard = () => {
     );
   }
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '🌅 Good morning';
+    if (hour < 17) return '☀️ Good afternoon';
+    return '🌙 Good evening';
+  };
+
+  const getPaymentStatus = () => {
+    if (user?.registration_payment_status === 'completed') {
+      return {
+        icon: '✅',
+        text: 'Account Active',
+        color: 'text-green-600',
+        bgColor: 'bg-green-50'
+      };
+    }
+    return {
+      icon: '⏳',
+      text: 'Payment Pending',
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50'
+    };
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
       {/* 🧭 Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gradient">🎯 PerkPal Dashboard</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              🚀 CodeWave Dashboard
+            </h1>
             <Button
               onClick={handleLogout}
               variant="outline"
@@ -203,17 +240,22 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 👋 Welcome Section */}
+        {/* 👋 Personalized Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.first_name}! 👋
+            {getGreeting()}, {user?.first_name}! 👋
           </h2>
-          <p className="text-gray-600">Ready to earn more rewards today?</p>
+          <div className="flex items-center gap-4">
+            <p className="text-gray-600">Ready to earn more rewards today?</p>
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatus().bgColor} ${getPaymentStatus().color}`}>
+              {getPaymentStatus().icon} {getPaymentStatus().text}
+            </div>
+          </div>
         </div>
 
         {/* 📊 Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="gradient-primary text-white">
+          <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">💰 Wallet Balance</CardTitle>
               <Wallet className="h-4 w-4" />
@@ -224,7 +266,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="gradient-secondary text-white">
+          <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">🏆 Total Earned</CardTitle>
               <TrendingUp className="h-4 w-4" />
@@ -235,7 +277,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="gradient-accent text-white">
+          <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">🎁 Referral Code</CardTitle>
               <Users className="h-4 w-4" />
@@ -292,19 +334,19 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* 💸 Quick Actions */}
+          {/* 💸 Quick Actions & Referrals */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wallet className="w-5 h-5 text-emerald-500" />
-                💸 Quick Actions
+                💸 Quick Actions & Referrals
               </CardTitle>
-              <CardDescription>Manage your earnings</CardDescription>
+              <CardDescription>Manage your earnings and grow your network</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
                 onClick={handleWithdraw}
-                className="w-full gradient-primary text-white"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                 size="lg"
               >
                 💳 Withdraw Funds
@@ -315,12 +357,17 @@ const Dashboard = () => {
                 <p className="text-sm text-emerald-700 mb-3">
                   Earn ₦1,000 for each friend you refer, plus ₦250 from their referrals!
                 </p>
-                <div className="flex items-center gap-2">
-                  <code className="bg-white px-3 py-1 rounded border text-sm">
-                    {user?.referral_code}
-                  </code>
-                  <Button onClick={copyReferralCode} size="sm" variant="outline">
-                    <Copy className="w-3 h-3" />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-3 py-1 rounded border text-sm flex-1">
+                      {user?.referral_code}
+                    </code>
+                    <Button onClick={copyReferralCode} size="sm" variant="outline">
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <Button onClick={copyReferralLink} className="w-full" variant="outline">
+                    📤 Copy Referral Link
                   </Button>
                 </div>
               </div>
@@ -331,6 +378,7 @@ const Dashboard = () => {
                   <li>• Complete daily tasks for consistent income</li>
                   <li>• Share your referral code with friends</li>
                   <li>• Check back regularly for new opportunities</li>
+                  <li>• Invite friends to earn from their activities too!</li>
                 </ul>
               </div>
             </CardContent>
